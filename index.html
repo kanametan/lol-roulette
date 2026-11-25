@@ -35,13 +35,31 @@ footer{text-align:center;color:#71839a;font-size:12px;margin-top:24px}
 const CHAMPS = ["Aatrox", "Ahri", "Akali", "Akshan", "Alistar", "Ambessa", "Amumu", "Anivia", "Annie", "Aphelios", "Ashe", "Aurelion Sol", "Aurora", "Azir", "Bard", "Bel'Veth", "Blitzcrank", "Brand", "Braum", "Briar", "Caitlyn", "Camille", "Cassiopeia", "Cho'Gath", "Corki", "Darius", "Diana", "Dr. Mundo", "Draven", "Ekko", "Elise", "Evelynn", "Ezreal", "Fiddlesticks", "Fiora", "Fizz", "Galio", "Gangplank", "Garen", "Gnar", "Gragas", "Graves", "Gwen", "Hecarim", "Heimerdinger", "Hwei", "Illaoi", "Irelia", "Ivern", "Janna", "Jarvan IV", "Jax", "Jayce", "Jhin", "Jinx", "K'Sante", "Kai'Sa", "Kalista", "Karma", "Karthus", "Kassadin", "Katarina", "Kayle", "Kayn", "Kennen", "Kha'Zix", "Kindred", "Kled", "Kog'Maw", "LeBlanc", "Lee Sin", "Leona", "Lillia", "Lissandra", "Lucian", "Lulu", "Lux", "Malphite", "Malzahar", "Maokai", "Master Yi", "Mel", "Milio", "Miss Fortune", "Mordekaiser", "Morgana", "Naafiri", "Nami", "Nasus", "Nautilus", "Neeko", "Nidalee", "Nilah", "Nocturne", "Nunu & Willump", "Olaf", "Orianna", "Ornn", "Pantheon", "Poppy", "Pyke", "Qiyana", "Quinn", "Rakan", "Rammus", "Rek'Sai", "Rell", "Renata Glasc", "Renekton", "Rengar", "Riven", "Rumble", "Ryze", "Samira", "Sejuani", "Senna", "Seraphine", "Sett", "Shaco", "Shen", "Shyvana", "Singed", "Sion", "Sivir", "Skarner", "Smolder", "Sona", "Soraka", "Swain", "Sylas", "Syndra", "Tahm Kench", "Taliyah", "Talon", "Taric", "Teemo", "Thresh", "Tristana", "Trundle", "Tryndamere", "Twisted Fate", "Twitch", "Udyr", "Urgot", "Varus", "Vayne", "Veigar", "Vel'Koz", "Vex", "Vi", "Viego", "Viktor", "Vladimir", "Volibear", "Warwick", "Wukong", "Xayah", "Xerath", "Xin Zhao", "Yasuo", "Yone", "Yorick", "Yunara", "Yuumi", "Zaahen", "Zac", "Zed", "Zeri", "Ziggs", "Zilean", "Zoe", "Zyra"];
 const LANES=[["おまかせ","🎲"],["トップ","🛡️"],["ジャングル","🌲"],["ミッド","✨"],["ADC","🏹"],["サポート","💚"]];
 let lane="おまかせ", excluded=new Set(), history=[];
+let JP_NAMES={};
 const $=id=>document.getElementById(id);
+const DISPLAY_IDS={"Aurelion Sol":"AurelionSol","Cho'Gath":"Chogath","Dr. Mundo":"DrMundo","Jarvan IV":"JarvanIV","Kai'Sa":"Kaisa","Kha'Zix":"Khazix","Kog'Maw":"KogMaw","K'Sante":"KSante","Lee Sin":"LeeSin","Master Yi":"MasterYi","Miss Fortune":"MissFortune","Nunu & Willump":"Nunu","Rek'Sai":"RekSai","Renata Glasc":"Renata","Tahm Kench":"TahmKench","Twisted Fate":"TwistedFate","Vel'Koz":"Velkoz","Xin Zhao":"XinZhao","Wukong":"MonkeyKing"};
+function displayName(champ){return JP_NAMES[champ]||champ}
+async function loadJapaneseNames(){
+  try{
+    const versions=await fetch('https://ddragon.leagueoflegends.com/api/versions.json').then(r=>{if(!r.ok)throw Error('versions');return r.json()});
+    const version=versions[0];
+    const json=await fetch(`https://ddragon.leagueoflegends.com/cdn/${version}/data/ja_JP/champion.json`).then(r=>{if(!r.ok)throw Error('champions');return r.json()});
+    const data=json.data||{};
+    CHAMPS.forEach(champ=>{
+      const id=DISPLAY_IDS[champ]||champ.replace(/[^A-Za-z0-9]/g,'');
+      if(data[id]?.name)JP_NAMES[champ]=data[id].name;
+    });
+    renderChampions();
+    if(history.length)renderHistory();
+    if($('champResult').dataset.champ)$('champResult').textContent=displayName($('champResult').dataset.champ);
+  }catch(e){console.warn('日本語チャンピオン名を読み込めませんでした。英語名で表示します。',e)}
+}
 function renderLanes(){$("lanes").innerHTML=LANES.map(([n,e])=>`<button class="lane ${lane===n?"active":""}" data-lane="${n}"><span>${e}</span>${n}</button>`).join("");document.querySelectorAll("[data-lane]").forEach(b=>b.onclick=()=>{lane=b.dataset.lane;renderLanes()})}
-function renderChampions(){const q=$("search").value.toLowerCase();$("champions").innerHTML=CHAMPS.filter(c=>c.toLowerCase().includes(q)).map(c=>`<div class="champ"><label><input type="checkbox" data-champ="${encodeURIComponent(c)}" ${excluded.has(c)?"checked":""}>${c}</label></div>`).join("");document.querySelectorAll("[data-champ]").forEach(el=>el.onchange=()=>{const c=decodeURIComponent(el.dataset.champ);el.checked?excluded.add(c):excluded.delete(c);updateCount()});updateCount()}
+function renderChampions(){const q=$("search").value.toLowerCase();$("champions").innerHTML=CHAMPS.filter(c=>c.toLowerCase().includes(q)||displayName(c).toLowerCase().includes(q)).map(c=>`<div class="champ"><label><input type="checkbox" data-champ="${encodeURIComponent(c)}" ${excluded.has(c)?"checked":""}>${displayName(c)}</label></div>`).join("");document.querySelectorAll("[data-champ]").forEach(el=>el.onchange=()=>{const c=decodeURIComponent(el.dataset.champ);el.checked?excluded.add(c):excluded.delete(c);updateCount()});updateCount()}
 function updateCount(){$("count").textContent=`対象 ${CHAMPS.length-excluded.size} / ${CHAMPS.length}体`}
-function spin(){const pool=CHAMPS.filter(c=>!excluded.has(c));if(!pool.length){alert("抽選対象がいません。除外設定を見直してね！");return}const c=pool[Math.floor(Math.random()*pool.length)];const chosen=lane==="おまかせ"?LANES[1+Math.floor(Math.random()*5)][0]:lane;const icon=LANES.find(x=>x[0]===chosen)[1];$("resultLabel").textContent="今回の運命のチャンピオンは…";$("laneResult").textContent=`${icon} ${chosen}`;$("champResult").textContent=c;$("remaining").textContent=`抽選対象 ${pool.length}体`;history.unshift({lane:chosen,champ:c});history=history.slice(0,10);renderHistory()}
-function renderHistory(){$("history").innerHTML=history.length?history.map((h,i)=>`<div class="historyrow"><span>#${i+1}　${h.lane}</span><span>${h.champ}</span></div>`).join(""):'<div class="small">まだ抽選されていません。</div>'}
-function reset(){$("resultLabel").textContent="まだ運命は決まっていない…";$("laneResult").textContent="🎲 おまかせ";$("champResult").textContent="？？？";$("remaining").textContent="";history=[];renderHistory()}
+function spin(){const pool=CHAMPS.filter(c=>!excluded.has(c));if(!pool.length){alert("抽選対象がいません。除外設定を見直してね！");return}const c=pool[Math.floor(Math.random()*pool.length)];const chosen=lane==="おまかせ"?LANES[1+Math.floor(Math.random()*5)][0]:lane;const icon=LANES.find(x=>x[0]===chosen)[1];$("resultLabel").textContent="今回の運命のチャンピオンは…";$("laneResult").textContent=`${icon} ${chosen}`;$("champResult").dataset.champ=c;$("champResult").textContent=displayName(c);$("remaining").textContent=`抽選対象 ${pool.length}体`;history.unshift({lane:chosen,champ:c});history=history.slice(0,10);renderHistory()}
+function renderHistory(){$("history").innerHTML=history.length?history.map((h,i)=>`<div class="historyrow"><span>#${i+1}　${h.lane}</span><span>${displayName(h.champ)}</span></div>`).join(""):'<div class="small">まだ抽選されていません。</div>'}
+function reset(){$("resultLabel").textContent="まだ運命は決まっていない…";$("laneResult").textContent="🎲 おまかせ";$("champResult").textContent="？？？";$("champResult").dataset.champ="";$("remaining").textContent="";history=[];renderHistory()}
 $("spin").onclick=spin;$("again").onclick=spin;$("reset").onclick=reset;$("search").oninput=renderChampions;$("all").onclick=()=>{excluded.clear();renderChampions()};$("none").onclick=()=>{excluded=new Set(CHAMPS);renderChampions()};
-renderLanes();renderChampions();renderHistory();
+renderLanes();renderChampions();renderHistory();loadJapaneseNames();
 </script></body></html>
